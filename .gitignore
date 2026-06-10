@@ -11,6 +11,7 @@ venv/
 .env
 .env.*
 !.env.example
+.streamlit/secrets.toml
 
 # Azure Functions
 functions/local.settings.json
