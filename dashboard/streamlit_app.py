@@ -5,7 +5,7 @@ Reads the curated employee snapshots LIVE from the Synapse serverless SQL pool
 monthly headcount / churn / compensation story.
 
 The serving view consolidates every `curated/{yyyy}/{MM}` partition, so new months
-appear automatically as the pipeline writes them — no re-export, no snapshot to refresh.
+appear automatically as the pipeline writes them, with no re-export and no snapshot to refresh.
 
 Local dev:
     1. Copy .streamlit/secrets.toml.example -> .streamlit/secrets.toml and fill it in.
@@ -136,27 +136,27 @@ snap = df[df["month"] == sel]
 
 col5, col6 = st.columns(2)
 with col5:
-    st.subheader(f"Department headcount — {sel}")
+    st.subheader(f"Department headcount ({sel})")
     dept = snap.groupby("department", as_index=False)["employee_id"].nunique()
     dept.columns = ["department", "headcount"]
     fig = px.bar(dept.sort_values("headcount"), x="headcount", y="department", orientation="h")
     fig.update_layout(height=380, margin=dict(l=20, r=20, t=10, b=20))
     st.plotly_chart(fig, use_container_width=True)
 with col6:
-    st.subheader(f"Salary distribution — {sel}")
+    st.subheader(f"Salary distribution ({sel})")
     fig = px.histogram(snap, x="salary", nbins=30)
     fig.update_layout(height=380, margin=dict(l=20, r=20, t=10, b=20), yaxis_title="employees")
     st.plotly_chart(fig, use_container_width=True)
 
 col7, col8 = st.columns(2)
 with col7:
-    st.subheader(f"Avg salary by department — {sel}")
+    st.subheader(f"Avg salary by department ({sel})")
     sal = snap.groupby("department", as_index=False)["salary"].mean()
     fig = px.bar(sal.sort_values("salary"), x="salary", y="department", orientation="h")
     fig.update_layout(height=360, margin=dict(l=20, r=20, t=10, b=20))
     st.plotly_chart(fig, use_container_width=True)
 with col8:
-    st.subheader(f"Employment type — {sel}")
+    st.subheader(f"Employment type ({sel})")
     et = snap.groupby("employment_type", as_index=False)["employee_id"].nunique()
     et.columns = ["employment_type", "count"]
     fig = px.pie(et, names="employment_type", values="count", hole=0.5)
