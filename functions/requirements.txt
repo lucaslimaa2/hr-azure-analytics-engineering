@@ -1,0 +1,5 @@
+# Generate function deps only. The transform is serverless SQL (no Python), so no
+# pandas/pyarrow. The source is generated in-pipeline, so no `requests`.
+azure-functions
+azure-storage-file-datalake
+azure-identity

@@ -1,0 +1,74 @@
+name: HR monthly pipeline
+
+# ── WHEN this workflow runs (the "event" / trigger) ──────────────────────────
+on:
+  workflow_dispatch:          # manual "Run workflow" button — with optional inputs
+    inputs:
+      year:
+        description: "Year YYYY (blank = current month)"
+        required: false
+        default: "2026"
+      month:
+        description: "Month MM (blank = current month)"
+        required: false
+        default: "06"
+  schedule:
+    - cron: "0 6 1 * *"       # 06:00 UTC on the 1st of every month
+
+# ── WHAT runs ────────────────────────────────────────────────────────────────
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    # Job-wide environment: the robot's login (from GitHub Secrets) + lake/SQL targets.
+    # The AZURE_* trio is what DefaultAzureCredential uses to authenticate as the
+    # service principal — for BOTH the lake write and the AAD token to SQL.
+    env:
+      STORAGE_ACCOUNT_URL: https://hrdatalake780hz7.dfs.core.windows.net
+      SQL_SERVER: hr-synapse-780hz7-ondemand.sql.azuresynapse.net
+      SQL_DATABASE: hr_curated
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Install Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r functions/requirements.txt
+          pip install pyodbc
+
+      # pyodbc needs Microsoft's ODBC Driver 18 — not preinstalled on the runner.
+      - name: Install Microsoft ODBC Driver 18
+        run: |
+          curl -sSL https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc > /dev/null
+          curl -sSL https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list > /dev/null
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18
+
+      # Decide which month to run: use the manual inputs if given, else today's month.
+      - name: Resolve target month
+        id: m
+        run: |
+          YEAR="${{ inputs.year }}"
+          MONTH="${{ inputs.month }}"
+          if [ -z "$YEAR" ]; then YEAR=$(date -u +%Y); fi
+          if [ -z "$MONTH" ]; then MONTH=$(date -u +%m); fi
+          echo "year=$YEAR"   >> "$GITHUB_OUTPUT"
+          echo "month=$MONTH" >> "$GITHUB_OUTPUT"
+          echo "Target month -> $YEAR-$MONTH"
+
+      # Activity 1 — GENERATE: write this month's full-roster snapshot to raw.
+      - name: Generate roster into raw
+        run: python scripts/run_generate.py --year ${{ steps.m.outputs.year }} --month ${{ steps.m.outputs.month }}
+
+      # Activity 2 — TRANSFORM: run the proc on serverless SQL -> curated parquet.
+      - name: Transform raw into curated
+        run: python scripts/run_transform.py --year ${{ steps.m.outputs.year }} --month ${{ steps.m.outputs.month }}

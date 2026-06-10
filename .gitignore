@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+
+# Azure Functions
+functions/local.settings.json
+.python_packages/
+bin/
+obj/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+.terraform.lock.hcl
+
+# Data — NEVER commit HR data. Only synthetic fixtures that are explicitly meant to ship.
+*.parquet
+*.csv
+*.xlsx
+data/
+source-data/generated/       # generated synthetic feed — reproducible via the generator
+!tests/fixtures/**
+
+# Synapse SQL — local-only learning scaffolds (the step-by-step build-up of the
+# transform). Kept on disk for reference, but NOT shipped: only the production
+# objects ship (08 setup, 10 clean view, 11 transform proc, 12 backfill).
+synapse/sql/00_read_raw.sql
+synapse/sql/01_clean_categoricals.sql
+synapse/sql/02_clean_dates.sql
+synapse/sql/03_clean_salary.sql
+synapse/sql/04_transform_select.sql
+synapse/sql/05_derived.sql
+synapse/sql/06_dedupe.sql
+synapse/sql/07_transform_full_select.sql
+synapse/sql/09_cetas.sql
+
+# Internal dev docs — kept on disk, not shipped to the public repo.
+CLAUDE.md
+ROADMAP.md
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
